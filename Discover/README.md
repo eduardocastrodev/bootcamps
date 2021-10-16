@@ -2,8 +2,6 @@
   <img alt="Discover" height="80" title="Rocket Discover" src="https://www.rocketseat.com.br/_next/image?url=%2Ftemporary%2Fviajando-ao-espaco.png&w=96&q=100" />
 </h1>
 
-<br>
-
 ## 🏃‍♂️ Introdução
 
 Inicio para quem deseja aprender programação com mão na massa e foco no desenvolvimento web.

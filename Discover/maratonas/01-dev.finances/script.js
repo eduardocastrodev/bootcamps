@@ -1,116 +1,211 @@
 function toggle() {
-  const modal = document.querySelector('.modal-overlay')
+  const modal = document.querySelector(".modal-overlay");
 
-  if (modal.classList.contains('active')) {
-    modal.classList.remove('active')
+  if (modal.classList.contains("active")) {
+    modal.classList.remove("active");
   } else {
-    modal.classList.add('active')
+    modal.classList.add("active");
   }
 }
 
-const transations = [
-  {
-    id: 1,
-    description: 'Luz',
-    amount: -50000,
-    date: '23/01/2021'
+const Storage = {
+  get() {
+    return JSON.parse(localStorage.getItem("dev.finances:transactions")) || [];
   },
-  {
-    id: 2,
-    description: 'Criação de Website	',
-    amount: 500000,
-    date: '26/01/2021	'
-  },
-  {
-    id: 3,
-    description: 'Aluguel',
-    amount: -150000,
-    date: '26/01/2021'
-  },
-  {
-    id: 4,
-    description: 'App',
-    amount: 200000,
-    date: '27/01/2021'
-  }
-]
 
-const Transation = {
-  all: transations,
-  add(transation) {
-    Transation.all.push(transation)
+  set(transactions) {
+    localStorage.setItem(
+      "dev.finances:transactions",
+      JSON.stringify(transactions)
+    );
   },
-  incomes () {
+};
+
+const Transaction = {
+  all: Storage.get(),
+
+  add(transaction) {
+    Transaction.all.push(transaction);
+
+    App.reload();
+  },
+
+  remove(index) {
+    Transaction.all.splice(index, 1);
+
+    App.reload();
+  },
+
+  incomes() {
     let income = 0;
 
-    Transation.all.forEach((transation) => {
-      if (transation.amount > 0) income += transation.amount;
-    })
+    Transaction.all.forEach((transaction) => {
+      if (transaction.amount > 0) income += transaction.amount;
+    });
 
-    return income
+    return income;
   },
-  expenses () {
+
+  expenses() {
     let expense = 0;
 
-    Transation.all.forEach((transation) => {
-      if (transation.amount < 0) expense += transation.amount;
-    })
+    Transaction.all.forEach((transaction) => {
+      if (transaction.amount < 0) expense += transaction.amount;
+    });
 
     return expense;
   },
-  total () {
-    return Transation.incomes() + Transation.expenses()
-  }
-}
+
+  total() {
+    return Transaction.incomes() + Transaction.expenses();
+  },
+};
 
 const DOM = {
-  transationContainer: document.querySelector('#data-table tbody'),
+  transactionContainer: document.querySelector("#data-table tbody"),
 
-  addTransition(transation, index) {
-    const tr = document.createElement('tr')
-    tr.innerHTML = DOM.innerHTMLTransaction(transation)
+  addTransition(transaction, index) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = DOM.innerHTMLTransaction(transaction, index);
+    tr.dataset.index = index;
 
-    DOM.transationContainer.appendChild(tr)
+    DOM.transactionContainer.appendChild(tr);
   },
-  innerHTMLTransaction(transation) {
-  const CSSclass = transation.amount > 0 ? 'income' : 'expense'
-  const amount = Utils.formatCurrency(transation.amount)
+  innerHTMLTransaction(transaction, index) {
+    const CSSclass = transaction.amount > 0 ? "income" : "expense";
+    const amount = Utils.formatCurrency(transaction.amount);
 
     const html = `
-      <td class="description">${transation.description}</td>
+      <td class="description">${transaction.description}</td>
       <td class="${CSSclass}">${amount}</td>
-      <td class="date">${transation.date}</td>
-      <th><img src="assets/minus.svg" alt="Remover transação"></th>
-    `
+      <td class="date">${transaction.date}</td>
+      <th><img onclick="Transaction.remove(${index})" src="assets/minus.svg" alt="Remover transação"></th>
+    `;
 
-    return html
+    return html;
   },
-  updateBalance() { 
-    document.getElementById('incomeDisplay').innerHTML = Utils.formatCurrency(Transation.incomes())
-    document.getElementById('expenseDisplay').innerHTML = Utils.formatCurrency(Transation.expenses())
-    document.getElementById('totalDisplay').innerHTML = Utils.formatCurrency(Transation.total())
-  }
-}
+  updateBalance() {
+    document.getElementById("incomeDisplay").innerHTML = Utils.formatCurrency(
+      Transaction.incomes()
+    );
+    document.getElementById("expenseDisplay").innerHTML = Utils.formatCurrency(
+      Transaction.expenses()
+    );
+    document.getElementById("totalDisplay").innerHTML = Utils.formatCurrency(
+      Transaction.total()
+    );
+  },
+  clearTransactions() {
+    DOM.transactionContainer.innerHTML = "";
+  },
+};
 
 const Utils = {
-  formatCurrency(value) {
-    const signal = Number(value) < 0 ? '-' : ''
+  formatAmount(value) {
+    value = Number(value.replace(/\,\./g, "")) * 100;
 
-    value = String(value).replace(/\D/g, "")
-    
-    value = Number(value) / 100
+    return value;
+  },
+
+  formatDate(date) {
+    const splittedDate = date.split("-");
+
+    return `${splittedDate[2]}/${splittedDate[1]}/${splittedDate[0]}`;
+  },
+
+  formatCurrency(value) {
+    const signal = Number(value) < 0 ? "-" : "";
+
+    value = String(value).replace(/\D/g, "");
+
+    value = Number(value) / 100;
 
     value = value.toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
-    })
+    });
 
-    return ( signal + value )
-  }
-}
+    return signal + value;
+  },
+};
 
-transations.forEach( function(transation) {
-  DOM.addTransition(transation)
-})
+const Form = {
+  description: document.querySelector("input#description"),
+  amount: document.querySelector("input#amount"),
+  date: document.querySelector("input#date"),
 
-DOM.updateBalance()
+  getValues() {
+    return {
+      description: Form.description.value,
+      amount: Form.amount.value,
+      date: Form.date.value,
+    };
+  },
+
+  formatValues() {
+    let { description, amount, date } = Form.getValues();
+
+    amount = Utils.formatAmount(amount);
+
+    date = Utils.formatDate(date);
+
+    return {
+      description,
+      amount,
+      date,
+    };
+  },
+
+  validateFields() {
+    const { description, amount, date } = Form.getValues();
+
+    if (
+      description.trim() === "" ||
+      amount.trim() === "" ||
+      date.trim() === ""
+    ) {
+      throw new Error("Por favor, preencha todos os campos!");
+    }
+  },
+
+  saveTransaction(transaction) {
+    Transaction.add(transaction);
+  },
+
+  clearFields() {
+    Form.description.value = "";
+    Form.amount.value = "";
+    Form.date.value = "";
+  },
+
+  submit(event) {
+    event.preventDefault();
+
+    try {
+      Form.validateFields();
+      const transaction = Form.formatValues();
+      Form.saveTransaction(transaction);
+      Form.clearFields();
+      document.querySelector(".modal-overlay").classList.remove("active");
+    } catch (error) {
+      alert(error.message);
+    }
+  },
+};
+
+const App = {
+  init() {
+    Transaction.all.forEach(DOM.addTransition);
+
+    DOM.updateBalance();
+
+    Storage.set(Transaction.all);
+  },
+  reload() {
+    DOM.clearTransactions();
+
+    App.init();
+  },
+};
+
+App.init();
